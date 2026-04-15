@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";  // npm install @google/generative-ai
+import OpenAI from 'openai';
 
 const STUDIO_THREADS = [
   { id: 1, title: "Come memorizzare le formule di trigonometria in poco tempo?", type: "domanda", author: "Luca Ferrari", replies: 14, views: 203, tag: "Matematica" },
@@ -30,6 +30,7 @@ export default function Forum({ hub }) {
   const [chatLoading, setChatLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);  // Toggle chat
   const messagesEndRef = useRef(null);  // Auto-scroll
+  const [pplxClient, setPplxClient] = useState(null);
 
   const relevantThreads = threads.map(t => `${t.tag}: ${t.title}`).join(', ');  // Contesto forum
 
@@ -42,40 +43,47 @@ export default function Forum({ hub }) {
   }, [chatMessages]);
 
   const handleApiKeyChange = (e) => {
-    const key = e.target.value;
-    setApiKey(key);
-    if (key.trim()) {
-      try {
-        const genai = new GoogleGenerativeAI(key);
-        setGenAI(genai);
-        setChatMessages([{ role: "system", content: "API key OK!" }]);
-      } catch (error) {
-        setChatMessages([{ role: "system", content: "API key non valida." }]);
-      }
-    }
-  };
+  const key = e.target.value;
+  setApiKey(key);
+  if (key.trim()) {
+    const client = new OpenAI({
+      apiKey: key,
+      baseURL: 'https://api.perplexity.ai',  // Perplexity endpoint
+    });
+    setPplxClient(client);
+    setChatMessages([{ role: "system", content: "Perplexity API OK! Chiedi con web search." }]);
+  }
+};
 
   const handleChatSubmit = async () => {
-    if (!genAI || !chatInput.trim()) return;
-    const userMsg = chatInput;
-    setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
-    setChatInput("");
-    setChatLoading(true);
+  if (!pplxClient || !chatInput.trim()) return;
+  const userMsg = chatInput;
+  setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
+  setChatInput("");
+  setChatLoading(true);
 
-    try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-      const context = isStudio 
-        ? `Rispondi alla domanda su studio. Argomenti forum: ${relevantThreads}. Cerca info aggiornate se necessario. Rispondi in italiano.`
-        : `Rispondi alla domanda su gaming. Argomenti forum: ${relevantThreads}. Cerca info aggiornate se necessario. Rispondi in italiano.`;
-      
-      const result = await model.generateContent([context, userMsg]);
-      const aiReply = await result.response.text();
-      setChatMessages(prev => [...prev, { role: "assistant", content: aiReply }]);
-    } catch (error) {
-      setChatMessages(prev => [...prev, { role: "assistant", content: "Errore: " + error.message }]);
-    }
-    setChatLoading(false);
-  };
+  try {
+    const context = isStudio 
+      ? `Rispondi su studio/forum (${relevantThreads}). Usa web search per info aggiornate. Italiano preciso.`
+      : `Rispondi su gaming/forum (${relevantThreads}). Usa web search per info aggiornate. Italiano preciso.`;
+    
+    const completion = await pplxClient.chat.completions.create({
+      model: "llama-3.1-sonar-large-128k-online",  // Con web search!
+      messages: [
+        { role: "system", content: context },
+        ...chatMessages.slice(-10),  // Ultimi 10 msg per memoria
+        { role: "user", content: userMsg }
+      ],
+      max_tokens: 1024,
+      temperature: 0.7,
+    });
+    const aiReply = completion.choices[0].message.content;
+    setChatMessages(prev => [...prev, { role: "assistant", content: aiReply }]);
+  } catch (error) {
+    setChatMessages(prev => [...prev, { role: "assistant", content: `Errore: ${error.message}` }]);
+  }
+  setChatLoading(false);
+};
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;
