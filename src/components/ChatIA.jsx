@@ -29,7 +29,7 @@ function renderText(text) {
   });
 }
 
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem("dh_anthropic_key") || "";
 
 export default function ChatIA({ hub, username }) {
   const isStudio = hub === "studio";
@@ -124,6 +124,7 @@ export default function ChatIA({ hub, username }) {
   const handleSaveKey = () => {
     if (tempKey.trim()) {
       setApiKey(tempKey.trim());
+      localStorage.setItem("dh_anthropic_key", tempKey.trim());
       setShowApiInput(false);
       setTempKey("");
     }

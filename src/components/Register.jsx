@@ -23,23 +23,30 @@ export default function Register({ onSuccess }) {
       setFeedback({ type: "error", msg: "La password deve avere almeno 6 caratteri" });
       return;
     }
+
     setLoading(true);
-    try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: form.username, email: form.email, password: form.password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFeedback({ type: "error", msg: data.error });
-      } else {
-        setFeedback({ type: "success", msg: "Account creato! Ora accedi." });
-        setTimeout(() => onSuccess(), 1200);
-      }
-    } catch {
-      setFeedback({ type: "error", msg: "Impossibile connettersi al server" });
+    await new Promise((r) => setTimeout(r, 400)); // piccolo delay UX
+
+    // Leggi utenti esistenti da localStorage
+    const users = JSON.parse(localStorage.getItem("dh_users") || "[]");
+
+    if (users.find((u) => u.username === form.username)) {
+      setFeedback({ type: "error", msg: "Username già in uso" });
+      setLoading(false);
+      return;
     }
+    if (users.find((u) => u.email === form.email)) {
+      setFeedback({ type: "error", msg: "Email già registrata" });
+      setLoading(false);
+      return;
+    }
+
+    // Salva nuovo utente (password in chiaro — ok per demo locale)
+    users.push({ username: form.username, email: form.email, password: form.password });
+    localStorage.setItem("dh_users", JSON.stringify(users));
+
+    setFeedback({ type: "success", msg: "Account creato! Ora accedi." });
+    setTimeout(() => onSuccess(), 1200);
     setLoading(false);
   };
 

@@ -15,23 +15,23 @@ export default function Login({ onSuccess }) {
       setFeedback({ type: "error", msg: "Inserisci username e password" });
       return;
     }
+
     setLoading(true);
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFeedback({ type: "error", msg: data.error });
-      } else {
-        setFeedback({ type: "success", msg: data.message });
-        setTimeout(() => onSuccess(data.username), 800);
-      }
-    } catch {
-      setFeedback({ type: "error", msg: "Impossibile connettersi al server" });
+    await new Promise((r) => setTimeout(r, 400));
+
+    const users = JSON.parse(localStorage.getItem("dh_users") || "[]");
+    const user = users.find(
+      (u) => u.username === form.username && u.password === form.password
+    );
+
+    if (!user) {
+      setFeedback({ type: "error", msg: "Username o password errati" });
+      setLoading(false);
+      return;
     }
+
+    setFeedback({ type: "success", msg: `Bentornato, ${user.username}!` });
+    setTimeout(() => onSuccess(user.username), 800);
     setLoading(false);
   };
 

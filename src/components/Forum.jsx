@@ -112,31 +112,40 @@ export default function Forum({ hub }) {
     setChatLoading(true);
 
     try {
-      const context = isStudio
-        ? `Rispondi su studio/forum (${relevantThreads}). Usa web search per info aggiornate. Italiano preciso.`
-        : `Rispondi su gaming/forum (${relevantThreads}). Usa web search per info aggiornate. Italiano preciso.`;
+      const systemPrompt = isStudio
+        ? `Sei un assistente IA nel forum Studio di DualHub. Argomenti discussi: ${relevantThreads}. Rispondi in italiano, in modo chiaro e didattico.`
+        : `Sei un assistente IA nel forum Gioco di DualHub. Argomenti discussi: ${relevantThreads}. Rispondi in italiano, in modo entusiasta e competente sul gaming.`;
 
-      const response = await fetch("/api/chat", {
+      const apiKey = localStorage.getItem("dh_anthropic_key") || import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+      if (!apiKey) throw new Error("Nessuna API key Anthropic configurata. Impostala nella Chat IA.");
+
+      const history = [
+        ...chatMessages.slice(-8).filter((m) => m.role !== "system"),
+        { role: "user", content: userMsg },
+      ].map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
-          messages: [
-            // messaggio system del contesto
-            { role: "system", content: context },
-            // ultimi 5 messaggi, escludendo altri system
-            ...chatMessages.slice(-5).filter((m) => m.role !== "system"),
-            // nuova domanda utente
-            { role: "user", content: userMsg },
-          ],
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 600,
+          system: systemPrompt,
+          messages: history,
         }),
       });
 
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw new Error(data.error.message || "Errore API");
 
       setChatMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.content },
+        { role: "assistant", content: data.content?.[0]?.text || "Non ho capito, riprova." },
       ]);
     } catch (error) {
       setChatMessages((prev) => [
@@ -403,4 +412,55 @@ export default function Forum({ hub }) {
             <div
               style={{
                 display: "flex",
-                
+                                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "6px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: "600",
+                    padding: "2px 8px",
+                    borderRadius: "50px",
+                    background: t.type === "domanda"
+                      ? isStudio ? "var(--studio-soft)" : "var(--game-soft)"
+                      : "var(--surface3)",
+                    color: t.type === "domanda"
+                      ? isStudio ? "var(--studio-primary)" : "var(--game-primary)"
+                      : "var(--text-muted)",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {t.type}
+                </span>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    color: "var(--text-muted)",
+                    background: "var(--surface2)",
+                    padding: "2px 8px",
+                    borderRadius: "50px",
+                  }}
+                >
+                  {t.tag}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "12px", fontSize: "11px", color: "var(--text-muted)" }}>
+                <span>💬 {t.replies}</span>
+                <span>👁 {t.views}</span>
+              </div>
+            </div>
+            <p style={{ fontWeight: "600", fontSize: "14px", color: "var(--text)", marginBottom: "4px" }}>
+              {t.title}
+            </p>
+            <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+              di {t.author}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
