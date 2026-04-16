@@ -29,7 +29,7 @@ function renderText(text) {
   });
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 
 export default function ChatIA({ hub, username }) {
   const isStudio = hub === "studio";
@@ -43,8 +43,8 @@ export default function ChatIA({ hub, username }) {
   const [messages, setMessages] = useState([{ role: "ai", text: welcomeMsg }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(GEMINI_API_KEY);
-  const [showApiInput, setShowApiInput] = useState(!GEMINI_API_KEY);
+  const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
+  const [showApiInput, setShowApiInput] = useState(!ANTHROPIC_API_KEY);
   const [tempKey, setTempKey] = useState("");
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -74,40 +74,47 @@ export default function ChatIA({ hub, username }) {
     setLoading(true);
 
     try {
-      const allMsgs = newMessages.filter((m) => m.role !== "loading");
-      // skip welcome message, build history
-      const history = allMsgs.slice(1).map((m) => ({
-        role: m.role === "user" ? "user" : "model",
-        parts: [{ text: m.text }],
-      }));
+      // Build Anthropic messages format (skip welcome msg, alternate user/assistant)
+      const history = newMessages
+        .slice(1) // skip welcome
+        .map((m) => ({
+          role: m.role === "user" ? "user" : "assistant",
+          content: m.text,
+        }));
 
       const body = {
-        system_instruction: { parts: [{ text: isStudio ? SYSTEM_STUDIO : SYSTEM_GAME }] },
-        contents: history,
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: isStudio ? SYSTEM_STUDIO : SYSTEM_GAME,
+        messages: history,
       };
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify(body),
+      });
 
       const data = await res.json();
+
       if (data.error) throw new Error(data.error.message || "Errore API");
 
       const reply =
-        data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "Non ho capito, puoi ripetere?";
+        data.content?.[0]?.text || "Non ho capito, puoi ripetere?";
 
       setMessages([...newMessages, { role: "ai", text: reply }]);
     } catch (err) {
       setMessages([
         ...newMessages,
-        { role: "ai", text: `⚠️ ${err.message || "Errore di connessione. Controlla la tua API key Gemini."}` },
+        {
+          role: "ai",
+          text: `⚠️ ${err.message || "Errore di connessione. Controlla la tua API key Anthropic."}`,
+        },
       ]);
     }
 
@@ -131,13 +138,13 @@ export default function ChatIA({ hub, username }) {
           <h3>{botName}</h3>
           <p className="chat-header-sub">
             <span className={`chat-status-dot ${hub}`} />
-            Gemini 2.0 Flash
+            Claude Sonnet 4
           </p>
         </div>
         <button
           className="chat-key-btn"
           onClick={() => setShowApiInput(!showApiInput)}
-          title="Imposta API Key Google AI Studio"
+          title="Imposta API Key Anthropic"
         >
           🔑
         </button>
@@ -148,15 +155,15 @@ export default function ChatIA({ hub, username }) {
         <div className="chat-apikey-bar">
           <div className="chat-apikey-hint">
             Ottieni la tua key su{" "}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-              aistudio.google.com
+            <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer">
+              console.anthropic.com
             </a>
           </div>
           <div className="chat-apikey-row">
             <input
               className="chat-apikey-input"
               type="password"
-              placeholder="AIza..."
+              placeholder="sk-ant-..."
               value={tempKey}
               onChange={(e) => setTempKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
