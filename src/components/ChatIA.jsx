@@ -29,7 +29,7 @@ function renderText(text) {
   });
 }
 
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem("dh_anthropic_key") || "";
+const GEMINI_API_KEY = localStorage.getItem("dh_gemini_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
 
 export default function ChatIA({ hub, username }) {
   const isStudio = hub === "studio";
@@ -43,8 +43,8 @@ export default function ChatIA({ hub, username }) {
   const [messages, setMessages] = useState([{ role: "ai", text: welcomeMsg }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
-  const [showApiInput, setShowApiInput] = useState(!ANTHROPIC_API_KEY);
+  const [apiKey, setApiKey] = useState(GEMINI_API_KEY);
+  const [showApiInput, setShowApiInput] = useState(!GEMINI_API_KEY);
   const [tempKey, setTempKey] = useState("");
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -74,144 +74,94 @@ export default function ChatIA({ hub, username }) {
     setLoading(true);
 
     try {
-      // Build Anthropic messages format (skip welcome msg, alternate user/assistant)
       const history = newMessages
-        .slice(1) // skip welcome
+        .slice(1)
         .map((m) => ({
-          role: m.role === "user" ? "user" : "assistant",
-          content: m.text,
+          role: m.role === "user" ? "user" : "model",
+          parts: [{ text: m.text }],
         }));
 
       const body = {
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: isStudio ? SYSTEM_STUDIO : SYSTEM_GAME,
-        messages: history,
+        system_instruction: { parts: [{ text: isStudio ? SYSTEM_STUDIO : SYSTEM_GAME }] },
+        contents: history,
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
       };
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      );
 
       const data = await res.json();
-
       if (data.error) throw new Error(data.error.message || "Errore API");
 
-      const reply =
-        data.content?.[0]?.text || "Non ho capito, puoi ripetere?";
-
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Non ho capito, puoi ripetere?";
       setMessages([...newMessages, { role: "ai", text: reply }]);
     } catch (err) {
-      setMessages([
-        ...newMessages,
-        {
-          role: "ai",
-          text: `⚠️ ${err.message || "Errore di connessione. Controlla la tua API key Anthropic."}`,
-        },
-      ]);
+      setMessages([...newMessages, { role: "ai", text: `⚠️ ${err.message || "Errore. Controlla la tua API key Gemini."}` }]);
     }
-
     setLoading(false);
   };
 
   const handleSaveKey = () => {
     if (tempKey.trim()) {
       setApiKey(tempKey.trim());
-      localStorage.setItem("dh_anthropic_key", tempKey.trim());
+      localStorage.setItem("dh_gemini_key", tempKey.trim());
       setShowApiInput(false);
       setTempKey("");
     }
   };
 
   return (
-    <div className={`chat-container ${isStudio ? "hub-accent-studio" : "hub-accent-game"}`}>
-      {/* Header */}
+    <div className={`chat-container hub-accent-${hub}`}>
       <div className="chat-header">
         <div className={`chat-bot-avatar ${hub}`}>{botEmoji}</div>
         <div className="chat-header-info">
           <h3>{botName}</h3>
           <p className="chat-header-sub">
             <span className={`chat-status-dot ${hub}`} />
-            Claude Sonnet 4
+            Gemini 2.0 Flash
           </p>
         </div>
-        <button
-          className="chat-key-btn"
-          onClick={() => setShowApiInput(!showApiInput)}
-          title="Imposta API Key Anthropic"
-        >
-          🔑
-        </button>
+        <button className="chat-key-btn" onClick={() => setShowApiInput(!showApiInput)} title="API Key Google AI Studio">🔑</button>
       </div>
 
-      {/* API Key input */}
       {showApiInput && (
         <div className="chat-apikey-bar">
           <div className="chat-apikey-hint">
-            Ottieni la tua key su{" "}
-            <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer">
-              console.anthropic.com
-            </a>
+            Ottieni la key su{" "}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com</a>
           </div>
           <div className="chat-apikey-row">
             <input
-              className="chat-apikey-input"
-              type="password"
-              placeholder="sk-ant-..."
-              value={tempKey}
-              onChange={(e) => setTempKey(e.target.value)}
+              className="chat-apikey-input" type="password" placeholder="AIza..."
+              value={tempKey} onChange={(e) => setTempKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
             />
-            <button
-              className={`chat-apikey-save ${hub}`}
-              onClick={handleSaveKey}
-              disabled={!tempKey.trim()}
-            >
-              Salva
-            </button>
+            <button className={`chat-apikey-save ${hub}`} onClick={handleSaveKey} disabled={!tempKey.trim()}>Salva</button>
           </div>
         </div>
       )}
 
-      {/* Messages */}
       <div className="chat-messages">
         {messages.map((m, i) => (
           <div key={i} className={`chat-bubble-row ${m.role}`}>
-            {m.role === "ai" && (
-              <div className={`chat-bubble-avatar ai ${hub}`}>{botEmoji}</div>
-            )}
-            <div className={`chat-bubble ${m.role} ${m.role === "user" ? hub : ""}`}>
-              {renderText(m.text)}
-            </div>
-            {m.role === "user" && (
-              <div className={`chat-bubble-avatar user ${hub}`}>
-                {username.charAt(0).toUpperCase()}
-              </div>
-            )}
+            {m.role === "ai" && <div className={`chat-bubble-avatar ai ${hub}`}>{botEmoji}</div>}
+            <div className={`chat-bubble ${m.role} ${m.role === "user" ? hub : ""}`}>{renderText(m.text)}</div>
+            {m.role === "user" && <div className={`chat-bubble-avatar user ${hub}`}>{username.charAt(0).toUpperCase()}</div>}
           </div>
         ))}
-
         {loading && (
           <div className="chat-bubble-row ai">
             <div className={`chat-bubble-avatar ai ${hub}`}>{botEmoji}</div>
             <div className="chat-bubble ai loading-bubble">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
+              <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="chat-input-row">
         <input
           ref={inputRef}
@@ -222,15 +172,9 @@ export default function ChatIA({ hub, username }) {
           placeholder={isStudio ? "Chiedi qualcosa sullo studio..." : "Chiedi qualcosa sui giochi..."}
           disabled={loading}
         />
-        <button
-          className={`chat-send-btn ${hub}`}
-          onClick={sendMessage}
-          disabled={loading || !input.trim()}
-          title="Invia"
-        >
+        <button className={`chat-send-btn ${hub}`} onClick={sendMessage} disabled={loading || !input.trim()}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>

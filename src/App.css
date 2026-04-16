@@ -581,3 +581,113 @@ body {
 .forum-card.studio:hover { border-color: var(--studio-primary); }
 .forum-card.game:hover   { border-color: var(--game-primary); }
 
+
+/* ── COMMENTS ───────────────────────────────────────── */
+.comments-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 4px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.comment-item {
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.comment-body {
+  background: var(--surface2); border-radius: 10px;
+  padding: 6px 10px; font-size: 12px; flex: 1;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.comment-user { font-weight: 700; color: var(--text); font-size: 11px; }
+.comment-text { color: var(--text); line-height: 1.4; }
+.comment-input-row {
+  display: flex; gap: 6px; align-items: center;
+  padding-top: 4px;
+}
+.comment-input {
+  flex: 1; padding: 7px 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--text);
+  font-family: 'Sora', sans-serif; font-size: 12px; outline: none;
+  transition: border-color 0.2s;
+}
+.comment-input.studio:focus { border-color: var(--studio-primary); }
+.comment-input.game:focus   { border-color: var(--game-primary); }
+.comment-send {
+  width: 28px; height: 28px; border: none; border-radius: 50%;
+  font-size: 14px; cursor: pointer; color: #0d0f14;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s;
+}
+.comment-send.studio { background: var(--studio-primary); }
+.comment-send.game   { background: var(--game-primary); }
+.comment-send:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── AVATARS XS ──────────────────────────────────────── */
+.user-avatar-xs {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+}
+.user-avatar-xs.studio { background: var(--studio-primary); color: #0d0f14; }
+.user-avatar-xs.game   { background: var(--game-primary);   color: #0d0f14; }
+
+/* ── FRIENDS PANEL ───────────────────────────────────── */
+.friends-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+}
+.friends-tabs {
+  display: flex; gap: 4px; margin-bottom: 10px;
+}
+.friends-tab {
+  flex: 1; padding: 5px 4px; font-size: 13px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); cursor: pointer; color: var(--text-muted);
+  transition: all 0.15s; position: relative;
+}
+.friends-tab:hover { color: var(--text); }
+.friends-tab.active.studio { background: var(--studio-soft); border-color: var(--studio-primary); color: var(--studio-primary); }
+.friends-tab.active.game   { background: var(--game-soft);   border-color: var(--game-primary);   color: var(--game-primary); }
+.notif-badge {
+  position: absolute; top: -5px; right: -5px;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-size: 9px; font-weight: 700; color: #0d0f14;
+  display: flex; align-items: center; justify-content: center;
+}
+.notif-badge.studio { background: var(--studio-primary); }
+.notif-badge.game   { background: var(--game-primary); }
+.friends-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 320px; overflow-y: auto;
+}
+.friend-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px; border-radius: var(--radius-xs);
+  transition: background 0.15s;
+}
+.friend-item:hover { background: var(--surface2); }
+.friend-info { flex: 1; min-width: 0; }
+.friend-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.friend-add-btn {
+  width: 24px; height: 24px; border: none; border-radius: 50%;
+  font-size: 16px; font-weight: 700; cursor: pointer; color: #0d0f14;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.friend-add-btn.studio { background: var(--studio-primary); }
+.friend-add-btn.game   { background: var(--game-primary); }
+.friend-remove-btn {
+  width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: var(--surface3); color: var(--text-muted);
+  font-size: 14px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.friend-remove-btn:hover { background: #c0392b22; color: #c0392b; }
+.friend-search-input {
+  width: 100%; padding: 7px 10px; box-sizing: border-box;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); color: var(--text);
+  font-family: 'Sora', sans-serif; font-size: 12px; outline: none;
+}
+.friend-search-input.studio:focus { border-color: var(--studio-primary); }
+.friend-search-input.game:focus   { border-color: var(--game-primary); }
