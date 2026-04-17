@@ -29,7 +29,7 @@ function renderText(text) {
   });
 }
 
-const GEMINI_API_KEY = localStorage.getItem("dh_gemini_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 export default function ChatIA({ hub, username }) {
   const isStudio = hub === "studio";
@@ -43,9 +43,6 @@ export default function ChatIA({ hub, username }) {
   const [messages, setMessages] = useState([{ role: "ai", text: welcomeMsg }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(GEMINI_API_KEY);
-  const [showApiInput, setShowApiInput] = useState(!GEMINI_API_KEY);
-  const [tempKey, setTempKey] = useState("");
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const prevHub = useRef(hub);
@@ -63,7 +60,6 @@ export default function ChatIA({ hub, username }) {
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-    if (!apiKey) { setShowApiInput(true); return; }
 
     const userText = input.trim();
     setInput("");
@@ -88,7 +84,7 @@ export default function ChatIA({ hub, username }) {
       };
 
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
       );
 
@@ -103,15 +99,6 @@ export default function ChatIA({ hub, username }) {
     setLoading(false);
   };
 
-  const handleSaveKey = () => {
-    if (tempKey.trim()) {
-      setApiKey(tempKey.trim());
-      localStorage.setItem("dh_gemini_key", tempKey.trim());
-      setShowApiInput(false);
-      setTempKey("");
-    }
-  };
-
   return (
     <div className={`chat-container hub-accent-${hub}`}>
       <div className="chat-header">
@@ -123,25 +110,8 @@ export default function ChatIA({ hub, username }) {
             Gemini 2.0 Flash
           </p>
         </div>
-        <button className="chat-key-btn" onClick={() => setShowApiInput(!showApiInput)} title="API Key Google AI Studio">🔑</button>
+        <button className="chat-key-btn" style={{ visibility: "hidden" }} />
       </div>
-
-      {showApiInput && (
-        <div className="chat-apikey-bar">
-          <div className="chat-apikey-hint">
-            Ottieni la key su{" "}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com</a>
-          </div>
-          <div className="chat-apikey-row">
-            <input
-              className="chat-apikey-input" type="password" placeholder="AIza..."
-              value={tempKey} onChange={(e) => setTempKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
-            />
-            <button className={`chat-apikey-save ${hub}`} onClick={handleSaveKey} disabled={!tempKey.trim()}>Salva</button>
-          </div>
-        </div>
-      )}
 
       <div className="chat-messages">
         {messages.map((m, i) => (
